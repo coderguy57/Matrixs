@@ -352,4 +352,30 @@ TEST_CASE("Matrix Multiplication", "[matrix]") {
         REQUIRE(m3.cols() == 1);
         REQUIRE(m3(0, 0) == 6.0);
     }
+
+    SECTION("Matrix multiplication with big matrices") {
+        constexpr size_t m1_rows = 500;
+        constexpr size_t m1_cols = 200;
+        constexpr size_t m2_rows = m1_cols;
+        constexpr size_t m2_cols = 99;
+        Matrix m1 = random_matrix(m1_rows, m1_cols);
+        Matrix m2 = random_matrix(m2_rows, m2_cols);
+
+        Matrix result = m1 * m2;
+
+        // Verify that the dimensions of the result matrix are correct
+        REQUIRE(result.rows() == m1_rows);
+        REQUIRE(result.cols() == m2_cols);
+
+        // Verify that the values in the result matrix are correct
+        for (size_t r = 0; r < m1_rows; ++r) {
+            for (size_t c = 0; c < m2_cols; ++c) {
+                float expected = 0;
+                for (size_t k = 0; k < m1_cols; ++k) {
+                    expected += m1(r, k) * m2(k, c);
+                }
+                REQUIRE(result(r, c) == Approx(expected));
+            }
+        }
+    }
 }
