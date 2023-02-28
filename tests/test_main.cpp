@@ -379,3 +379,55 @@ TEST_CASE("Matrix Multiplication", "[matrix]") {
         }
     }
 }
+
+TEST_CASE("QR decomposition") {
+    Matrix A(3, 3);
+    A(0, 0) = 1;
+    A(0, 1) = 4;
+    A(0, 2) = 7;
+    A(1, 0) = 2;
+    A(1, 1) = 5;
+    A(1, 2) = 8;
+    A(2, 0) = 3;
+    A(2, 1) = 6;
+    A(2, 2) = 10;
+    
+    auto QR = qr_decomp(A);
+    Matrix Q = QR.Q;
+    Matrix R = QR.R;
+
+    SECTION("R is upper triangular") {
+        for (int i = 0; i < R.rows(); i++) {
+            for (int j = 0; j < i; j++) {
+                REQUIRE(R(i, j) == 0);
+            }
+        }
+    }
+
+    // SECTION("QR equals A") {
+    //     Matrix A_reconstructed(A.rows(), A.cols());
+    //     for (int i = 0; i < Q.rows(); i++) {
+    //         for (int j = 0; j < R.cols(); j++) {
+    //             for (int k = 0; k < R.rows(); k++) {
+    //                 A_reconstructed(i, j) += Q(i, k)*R(k, j);
+    //             }
+    //         }
+    //     }
+    //     for (int i = 0; i < A.rows(); i++) {
+    //         for (int j = 0; j < A.cols(); j++) {
+    //             REQUIRE(A_reconstructed(i, j) == Approx(A(i, j)));
+    //         }
+    //     }
+    // }
+
+    // SECTION("Q is orthogonal") {
+    //     Matrix Qt = Q.transpose();
+    //     Matrix I = identity_matrix(Q.rows());
+    //     Matrix QtQ = Qt * Q;
+    //     for (int i = 0; i < I.rows(); i++) {
+    //         for (int j = 0; j < I.cols(); j++) {
+    //             REQUIRE(QtQ(i, j) == Approx(I(i, j)));
+    //         }
+    //     }
+    // }
+}

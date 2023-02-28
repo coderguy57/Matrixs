@@ -1,9 +1,13 @@
 typedef float Scalar;
 
 #include <stdio.h>
+
+#include <cassert>
 #include <cmath>
 #include <cstdlib>
 #include <cstring>
+#include <iomanip>  // For setw() function
+#include <iostream>
 #include <random>  // for std::random_device, std::mt19937, and std::uniform_real_distribution
 
 class Matrix {
@@ -71,22 +75,42 @@ class Matrix {
     friend Matrix operator-(Matrix const &lhs, Matrix const &rhs);
     friend Matrix operator*(Matrix const &lhs, Matrix const &rhs);
 
-    Scalar operator[](int i) const { return data_[i]; }
-    Scalar &operator[](int i) { return data_[i]; }
-    Scalar operator()(int row, int column) const { return data_[row * columns_ + column]; }
-    Scalar &operator()(int row, int column) { return data_[row * columns_ + column]; }
+    Scalar operator[](int i) const {
+        assert(i >= 0 && i < rows_ * columns_);
+        return data_[i];
+    }
+    Scalar &operator[](int i) {
+        assert(i >= 0 && i < rows_ * columns_);
+        return data_[i];
+    }
+    Scalar operator()(int row, int column) const {
+        assert(row >= 0 && row < rows_);
+        assert(column >= 0 && column < columns_);
+        return data_[row * columns_ + column];
+    }
+    Scalar &operator()(int row, int column) {
+        assert(row >= 0 && row < rows_);
+        assert(column >= 0 && column < columns_);
+        return data_[row * columns_ + column];
+    }
 
     void operator+=(Matrix const &rhs) {
+        assert(rhs.rows_ == rows_);
+        assert(rhs.columns_ == columns_);
         for (int i = rows_ * columns_; i-- > 0;)
             data_[i] += rhs.data_[i];
     }
 
     void operator-=(Matrix const &rhs) {
+        assert(rhs.rows_ == rows_);
+        assert(rhs.columns_ == columns_);
         for (int i = rows_ * columns_; i-- > 0;)
             data_[i] -= rhs.data_[i];
     }
 
     bool operator==(Matrix const &rhs) const {
+        if (rhs.rows_ != rows_ || rhs.columns_ != columns_)
+            return false;
         for (int i = rows_ * columns_; i-- > 0;)
             if (data_[i] != rhs.data_[i])
                 return false;
@@ -130,6 +154,8 @@ class Matrix {
 };
 
 Matrix operator+(Matrix const &lhs, Matrix const &rhs) {
+    assert(lhs.rows_ == rhs.rows_);
+    assert(lhs.columns_ == rhs.columns_);
     Matrix out(lhs.rows_, lhs.columns_);
     for (int i = lhs.rows_ * lhs.columns_; i-- > 0;)
         out.data_[i] = lhs.data_[i] + rhs.data_[i];
@@ -137,6 +163,8 @@ Matrix operator+(Matrix const &lhs, Matrix const &rhs) {
 }
 
 Matrix operator-(Matrix const &lhs, Matrix const &rhs) {
+    assert(lhs.rows_ == rhs.rows_);
+    assert(lhs.columns_ == rhs.columns_);
     Matrix out(lhs.rows_, lhs.columns_);
     for (int i = lhs.rows_ * lhs.columns_; i-- > 0;)
         out.data_[i] = lhs.data_[i] - rhs.data_[i];
@@ -144,6 +172,7 @@ Matrix operator-(Matrix const &lhs, Matrix const &rhs) {
 }
 
 Matrix operator*(Matrix const &lhs, Matrix const &rhs) {
+    assert(lhs.columns_ == rhs.rows_);
     Matrix out(lhs.rows_, rhs.columns_);
     out.fill(0);
     if (lhs.rows_ * rhs.columns_ * lhs.columns_ < 16777216) {
@@ -174,6 +203,15 @@ Matrix operator*(Matrix const &lhs, Matrix const &rhs) {
     return out;
 }
 
+Matrix identity_matrix(int size) {
+    Matrix out(size, size);
+    out.fill(0.f);
+    for (int i = 0; i < size; i++) {
+        out(i, i) = 1.f;
+    }
+    return out;
+}
+
 Matrix random_matrix(int rows, int columns) {
     Matrix out(rows, columns);
     std::random_device rd;                                  // obtain a random seed from the hardware
@@ -186,4 +224,67 @@ Matrix random_matrix(int rows, int columns) {
         }
     }
     return out;
+}
+
+void print_matrix(Matrix const &matrix) {
+    for (int i = 0; i < matrix.rows(); i++) {
+        for (int j = 0; j < matrix.cols(); j++) {
+            std::cout << std::setw(5) << matrix(i, j) << " ";  // Use setw() for formatting
+        }
+        std::cout << std::endl;  // Move to next row
+    }
+    std::cout << std::endl;
+}
+
+struct QR {
+    Matrix Q;
+    Matrix R;
+};
+
+QR qr_decomp(Matrix const &A) {
+    Matrix R = A;
+    Matrix Q(A.rows(), A.rows());
+    Matrix V(A.rows(), 1);
+    Matrix vTA(1, A.cols());
+
+    for (int k = 0; k < A.rows(); k++) {
+        float norm = 0;
+        for (int i = k; i < A.rows(); i++) {
+            norm += R(i, k) * R(i, k);
+        }
+        norm = sqrt(norm);
+
+        if (norm != 0) {
+            for (int i = k; i < A.rows(); i++) {
+                V(i, 0) = R(i, k);
+            }
+            V(k, 0) += V(k, 0) > 0 ? norm : -norm;
+            norm = 0;
+            for (int i = k; i < A.rows(); i++) {
+                norm += V(i, 0) * V(i, 0);
+            }
+            norm = sqrt(norm);
+            for (int i = k; i < A.rows(); i++) {
+                V(i, 0) /= norm;
+            }
+
+            vTA.fill(0);
+            for (int i = k; i < A.rows(); i++) {
+                for (int j = k; j < A.cols(); j++) {
+                    vTA(0, j) += V(i, 0) * R(i, j);
+                }
+            }
+            for (int i = k; i < A.rows(); i++) {
+                for (int j = k + 1; j < A.cols(); j++) {
+                    R(i, j) -= 2 * V(i, 0) * vTA(0, j);
+                }
+            }
+            R(k, k) -= 2 * V(k, 0) * vTA(0, k);
+            for (int i = k; i < A.rows(); i++) {
+                R(i, k) = 0;
+            }
+        }
+    }
+
+    return {Q, R};
 }
