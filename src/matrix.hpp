@@ -203,6 +203,35 @@ Matrix operator*(Matrix const &lhs, Matrix const &rhs) {
     return out;
 }
 
+bool approx_equal(float value1, float value2, double margin = 1e-06) {
+    return std::abs(value1 - value2) < margin;
+}
+
+bool compare(Matrix const& lhs, Matrix const& rhs, double margin = 1e-06) {
+    if ((lhs.rows() != rhs.rows()) || (lhs.cols() != rhs.cols()))
+        return false;
+    for (int i = lhs.rows() * rhs.cols(); i-- > 0;)
+        if (!approx_equal(lhs[i], rhs[i], margin))
+            return false;
+    return true;
+}
+
+bool is_upper_tri(Matrix const& matrix) {
+    for (int i = 0; i < matrix.rows(); i++)
+        for (int j = 0; j < std::min(i, matrix.cols()); j++) 
+            if (matrix(i,j) != 0)
+                return false;
+    return true;
+}
+
+bool is_lower_tri(Matrix const& matrix) {
+    for (int i = 0; i < matrix.rows(); i++)
+        for (int j = i; j < matrix.cols(); j++) 
+            if (matrix(i,j) != 0)
+                return false;
+    return true;
+}
+
 Matrix identity_matrix(int size) {
     Matrix out(size, size);
     out.fill(0.f);
@@ -212,10 +241,10 @@ Matrix identity_matrix(int size) {
     return out;
 }
 
-Matrix random_matrix(int rows, int columns) {
+Matrix random_matrix(int rows, int columns, int seed = -1) {
     Matrix out(rows, columns);
     std::random_device rd;                                  // obtain a random seed from the hardware
-    std::mt19937 eng(rd());                                 // seed the generator
+    std::mt19937 eng(seed == -1 ? rd() : seed);             // seed the generator
     std::uniform_real_distribution<float> distr(0.0, 1.0);  // define the range
 
     for (int r = 0; r < rows; r++) {
@@ -229,11 +258,11 @@ Matrix random_matrix(int rows, int columns) {
 void print_matrix(Matrix const &matrix) {
     for (int i = 0; i < matrix.rows(); i++) {
         for (int j = 0; j < matrix.cols(); j++) {
-            std::cout << std::setw(5) << matrix(i, j) << " ";  // Use setw() for formatting
+            printf("%+8.2e ", matrix(i, j));
         }
-        std::cout << std::endl;  // Move to next row
+        printf("\n");
     }
-    std::cout << std::endl;
+    printf("\n");
 }
 
 struct QR {
@@ -243,18 +272,19 @@ struct QR {
 
 QR qr_decomp(Matrix const &A) {
     Matrix R = A;
-    Matrix Q(A.rows(), A.rows());
+    Matrix Q = identity_matrix(A.rows());
     Matrix V(A.rows(), 1);
     Matrix vTA(1, A.cols());
+    Matrix vTQ(1, A.rows());
 
-    for (int k = 0; k < A.rows(); k++) {
+    for (int k = 0; k < std::min(A.rows(), A.cols()); k++) {
         float norm = 0;
         for (int i = k; i < A.rows(); i++) {
             norm += R(i, k) * R(i, k);
         }
         norm = sqrt(norm);
 
-        if (norm != 0) {
+        if (!approx_equal(norm, 0)) {
             for (int i = k; i < A.rows(); i++) {
                 V(i, 0) = R(i, k);
             }
@@ -280,8 +310,20 @@ QR qr_decomp(Matrix const &A) {
                 }
             }
             R(k, k) -= 2 * V(k, 0) * vTA(0, k);
-            for (int i = k; i < A.rows(); i++) {
+            for (int i = k + 1; i < A.rows(); i++) {
                 R(i, k) = 0;
+            }
+
+            vTQ.fill(0);
+            for (int i = k; i < A.rows(); i++) {
+                for (int j = 0; j < A.rows(); j++) {
+                    vTQ(0, j) += V(i, 0) * Q(j, i);
+                }
+            }
+            for (int i = k; i < A.rows(); i++) {
+                for (int j = 0; j < A.rows(); j++) {
+                    Q(j, i) -= 2 * V(i, 0) * vTQ(0, j);
+                }
             }
         }
     }
