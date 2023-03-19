@@ -12,6 +12,26 @@ typedef float Scalar;
 
 class Matrix {
    public:
+    Matrix(std::initializer_list<std::vector<double>> list) {
+        rows_ = list.size();
+        if (rows_ > 0) {
+            columns_ = list.begin()->size();
+            const auto size = sizeof(float) * rows_ * columns_;
+            data_ = (float *)malloc(size);
+
+            size_t r = 0;
+            for (const auto& row : list) {
+                assert(row.size() == columns_);
+                for (int c = 0; c < columns_; c++) {
+                    (*this)(r, c) = row[c];
+                }
+                r++;
+            }
+        } else {
+            columns_ = 0;
+            data_ = nullptr;
+        }
+    }
     Matrix() {
         data_ = nullptr;
         rows_ = 0;
@@ -203,6 +223,27 @@ Matrix operator*(Matrix const &lhs, Matrix const &rhs) {
     return out;
 }
 
+float max(Matrix const& matrix) {
+    float max_value = std::numeric_limits<float>::lowest();
+    for (size_t i = matrix.rows() * matrix.cols(); i --> 0;)
+        max_value = std::max(max_value, matrix[i]);
+    return max_value;
+}
+
+float min(Matrix const& matrix) {
+    float min_value = std::numeric_limits<float>::max();
+    for (size_t i = matrix.rows() * matrix.cols(); i --> 0;)
+        min_value = std::min(min_value, matrix[i]);
+    return min_value;
+}
+
+float sum(Matrix const& matrix) {
+    float sum_value = 0;
+    for (size_t i = matrix.rows() * matrix.cols(); i --> 0;)
+        sum_value += matrix[i];
+    return sum_value;
+}
+
 bool approx_equal(float value1, float value2, double margin = 1e-06) {
     return std::abs(value1 - value2) < margin;
 }
@@ -285,6 +326,7 @@ QR qr_decomp(Matrix const &A) {
         norm = sqrt(norm);
 
         if (!approx_equal(norm, 0)) {
+            // V
             for (int i = k; i < A.rows(); i++) {
                 V(i, 0) = R(i, k);
             }
@@ -298,6 +340,7 @@ QR qr_decomp(Matrix const &A) {
                 V(i, 0) /= norm;
             }
 
+            // R
             vTA.fill(0);
             for (int i = k; i < A.rows(); i++) {
                 for (int j = k; j < A.cols(); j++) {
@@ -314,6 +357,7 @@ QR qr_decomp(Matrix const &A) {
                 R(i, k) = 0;
             }
 
+            // Q
             vTQ.fill(0);
             for (int i = k; i < A.rows(); i++) {
                 for (int j = 0; j < A.rows(); j++) {
@@ -329,4 +373,46 @@ QR qr_decomp(Matrix const &A) {
     }
 
     return {Q, R};
+}
+
+
+struct Solution {
+    enum class Type {
+        UNIQUE,
+        INFINITE,
+        NONE
+    };
+    Solution(Type type_, Matrix&& answer_) : type{type_}, answer{std::move(answer_)} {}
+    Type type;
+    Matrix answer;
+};
+
+// Solve the linear system Ax = b
+Solution solve(Matrix& a, Matrix& b) {
+    assert(b.cols() == 1);
+    assert(b.rows() == a.rows());
+    auto qr = qr_decomp(a);
+    auto qTb = (b.transpose() * qr.Q).transpose();
+    auto r = qr.R;
+    
+    bool unique = true;
+    int num_rows = b.rows();
+    Matrix x(num_rows, 1);
+    for (int i = num_rows - 1; i >= 0; i--) {
+        float temp_sum = qTb[i];
+        for (int j = num_rows - 1; j > i; j--) {
+            temp_sum -= r(i, j) * x[j];
+        }
+        if (approx_equal(r(i, i), 0)) {
+            if (!approx_equal(temp_sum, 0))
+                return Solution{Solution::Type::NONE, Matrix{}};
+            unique = false;
+            x[i] = 0;
+        } else {
+            x[i] = temp_sum / r(i, i);
+        }
+    }
+
+    auto solution_type = unique ? Solution::Type::UNIQUE : Solution::Type::INFINITE;
+    return Solution(solution_type, std::move(x));
 }

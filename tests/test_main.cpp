@@ -497,14 +497,78 @@ TEST_CASE("QR decomposition")
         test_QR_decomposition(A);
     }
 
-
-    SECTION("500x25 matrix - Random") {
+    SECTION("500x25 matrix - Random")
+    {
         constexpr int rows = 200;
         constexpr int cols = 15;
-        
+
         // create a 500x25 matrix
         Matrix A = random_matrix(rows, cols, 12345);
         test_QR_decomposition(A);
     }
+}
 
+TEST_CASE("Linear system solver")
+{
+    SECTION("Unique Solution")
+    {
+        Matrix a = {{1, 2},
+                    {3, 4}};
+        Matrix b = {{5},
+                    {6}};
+        Solution sol = solve(a, b);
+        Matrix expected = {{-4},
+                           {4.5}};
+
+        REQUIRE(sol.type == Solution::Type::UNIQUE);
+        REQUIRE(compare(sol.answer, expected, 1e-5));
+    }
+
+    SECTION("Infinite Solutions")
+    {
+        Matrix a = {{1, 2},
+                    {2, 4}};
+        Matrix b = {{3},
+                    {6}};
+        Solution sol = solve(a, b);
+
+        REQUIRE(sol.type == Solution::Type::INFINITE);
+    }
+
+    SECTION("No Solution")
+    {
+        Matrix a = {{1, 2},
+                    {2, 4}};
+        Matrix b = {{3},
+                    {7}};
+        Solution sol = solve(a, b);
+
+        REQUIRE(sol.type == Solution::Type::NONE);
+    }
+}
+
+TEST_CASE("Max, min, and sum functions") {
+    SECTION("Max function") {
+        Matrix mat = {{1, 2, 3}, {4, 5, 6}, {7, 8, 9}};
+        REQUIRE(approx_equal(max(mat), 9));
+
+        Matrix mat2 = {{-3.14, 2.71}, {0.0, 1.0}, {-1.0, -2.0}};
+        REQUIRE(approx_equal(max(mat2), 2.71));
+    }
+
+    SECTION("Min function") {
+        Matrix mat = {{1, 2, 3}, {4, 5, 6}, {7, 8, 9}};
+        REQUIRE(approx_equal(min(mat), 1));
+
+        Matrix mat2 = {{-3.14, 2.71}, {0.0, 1.0}, {-1.0, -2.0}};
+        REQUIRE(approx_equal(min(mat2), -3.14));
+    }
+
+    SECTION("Sum function") {
+        Matrix mat = {{1, 2, 3}, {4, 5, 6}, {7, 8, 9}};
+        REQUIRE(approx_equal(sum(mat), 45));
+
+        Matrix mat2 = {{-3.14, 2.71}, {0.0, 1.0}, {-1.0, -2.0}};
+        REQUIRE(approx_equal(sum(mat2), -2.43));
+    }
 }
