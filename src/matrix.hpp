@@ -45,7 +45,7 @@ class Matrix {
     }
     ~Matrix() {
         if (data_)
-            delete data_;
+            free(data_);
     }
     inline int rows() const noexcept { return rows_; }
     inline int cols() const noexcept { return columns_; }
@@ -70,7 +70,7 @@ class Matrix {
     // Copy assign
     Matrix &operator=(const Matrix &other) noexcept {
         if (data_)
-            delete data_;
+            free(data_);
         const auto size = sizeof(Scalar) * other.rows_ * other.columns_;
         data_ = (Scalar *)malloc(size);
         std::memcpy(data_, other.data_, size);
@@ -81,7 +81,7 @@ class Matrix {
     // Move assign
     Matrix &operator=(Matrix &&other) noexcept {
         if (data_)
-            delete data_;
+            free(data_);
         data_ = other.data_;
         rows_ = other.rows_;
         columns_ = other.columns_;

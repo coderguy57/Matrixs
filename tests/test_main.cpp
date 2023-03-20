@@ -3,11 +3,6 @@
 #include "catch2/catch.hpp"
 #include "matrix.hpp"
 
-TEST_CASE("Dummy test", "[dummy test instance]")
-{
-    REQUIRE(1 + 1 == 2);
-}
-
 TEST_CASE("Matrix Initialization", "[matrix]")
 {
     SECTION("Default Constructor")
@@ -20,6 +15,7 @@ TEST_CASE("Matrix Initialization", "[matrix]")
     SECTION("Copy Constructor")
     {
         Matrix m1(2, 2);
+        m1.fill(7); // Set all elements to 7
         Matrix m2(m1);
         REQUIRE(m2.rows() == 2);
         REQUIRE(m2.cols() == 2);
@@ -42,6 +38,7 @@ TEST_CASE("Matrix Initialization", "[matrix]")
     SECTION("Equality")
     {
         Matrix m1(2, 2);
+        m1.fill(7); // Set all elements to 7
         Matrix m2(m1);
         REQUIRE(m1 == m2);
         m1(0, 0) = 1.0;
